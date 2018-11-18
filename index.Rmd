@@ -1,0 +1,17 @@
+---
+title: "FIDE Rating of top-10 current chess players"
+author: "Ilya Maltsev"
+date: 'Nov 18, 2018'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+## Introduction
+
+
+
+## Ratings
+
