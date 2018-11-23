@@ -1,5 +1,5 @@
 ---
-title: "FIDE Rating of top-10 current chess players"
+title: "FIDE Rating of top-5 current chess players"
 author: "Ilya Maltsev"
 date: 'Nov 18, 2018'
 output: html_document
@@ -7,11 +7,114 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+Sys.setlocale("LC_TIME", "C")
 ```
 
 ## Introduction
 
+The project shows how FIDE rating of current top-5 chess players has been changing for several last years.
 
+The data is loaded from official [FIDE ratings page](http://ratings.fide.com/download.phtml). The graphics is made using *plotly* library.
 
-## Ratings
+```{r load functions, echo=FALSE}
+loadXmlCsvRatings <- function(datadir) {
+    files <- list.files(path = datadir,
+                        pattern = "standard_.*_xml.xml.csv",
+                        full.names = TRUE,
+                        recursive = TRUE)
+    fileDates <- sapply(lapply(files, str_match_all, "standard_(.*)frl_xml.xml.csv"), function(match) {
+      match[[1]][2]
+    })
+    fileMonth <- sapply(fileDates, substr, 1, 3)
+    fileYear <- sapply(fileDates, substr, 4, 5)
+    fileDates <- as.Date(paste0(fileMonth, "/", "01", "/", fileYear), "%b/%d/%y")
+    lcsv <- lapply(
+      files, 
+      function(f) {
+        print(paste("Reading file", f))
+        read.csv(f, stringsAsFactors = FALSE, sep = ";")
+      })
+    lcsv <- lapply(lcsv, function(csv) {
+      csv %>%
+        select(fideid, name, title, country, rating, games, birthday, flag) %>%
+        mutate(country = as.factor(country)) %>%
+        mutate(title = as.factor(title)) %>%
+        mutate(flag = as.factor(flag))
+    })
+    lcsv <- lapply(1:length(lcsv), function(index) {
+      lcsv[[index]] <- lcsv[[index]] %>%
+        mutate(date = fileDates[index])
+    })
+    all_ratings_xml_csv <- rbindlist(lcsv)
+    all_ratings_xml_csv
+}
+# loadFixedTxtRatings <- function(datadir) {
+#   files <- c(list.files(path = datadir,
+#                       pattern = ".*frl.txt",
+#                       full.names = TRUE),
+#              list.files(path = datadir,
+#                       pattern = ".*FRL.TXT",
+#                       full.names = TRUE))
+#   files <- sapply(files, tolower)
+#   ltxt <- lapply(
+#     files, 
+#     function(f) {
+#       print(paste("Reading file", f))
+#       read.fwf(f, skip = 1, widths = c(9, 34, 5, 3, 7, 6, 9, 7))
+#     })
+#   fileDates <- sapply(lapply(files, str_match_all, "(.*)frl.txt"), function(match) {
+#       match[[1]][2]
+#     })
+#   fileMonth <- sapply(fileDates, substr, 1, 3)
+#   fileYear <- sapply(fileDates, substr, 4, 5)
+#   fileDates <- as.Date(paste0(fileMonth, "/", "01", "/", fileYear), "%b/%d/%y")
+#   all_ratings_txt <- rbindlist(ltxt)
+#   names(all_ratings_txt) <- c("fideid", "name", "title", 
+#                               "country", "rating", "games", 
+#                               "birthday", "flag")
+#   all_ratings_txt
+# }
+```
 
+```{r loading data, echo=FALSE, warning=FALSE, message=FALSE}
+require(XML)
+require(dplyr)
+require(stringr)
+require(data.table)
+if (!file.exists("data/top_players_ratings.csv")) {
+  if (!file.exists("data/all_ratings.csv")) {
+    datadir <- "./data/full"
+    all_ratings <- loadXmlCsvRatings(datadir)
+    #all_ratings_fixed_txt <- loadFixedTxtRatings(datadir)
+    fwrite(all_ratings, file = "data/all_ratings.csv", sep = ";")
+  } else {
+    all_ratings <- fread(file = "data/all_ratings.csv", sep = ";") %>%
+     mutate(date = as.Date(date)) %>%
+     mutate(name = as.character(name))
+  }
+  currentDate <- Sys.Date()
+  min_diff <- min(currentDate - all_ratings$date)
+  latest_ratings <- all_ratings %>%
+    filter(abs(currentDate - date) == min_diff)
+  top_players <- latest_ratings %>%
+    filter(flag != "i" & flag != "wi") %>%
+    top_n(5, rating) %>%
+    arrange(desc(rating)) %>%
+    select(fideid)
+  top_players_id <- top_players[[1]]
+  top_players_ratings <- all_ratings %>%
+    filter(is.element(fideid, top_players_id)) %>%
+    group_by(fideid) %>%
+    arrange(date)
+  fwrite(top_players_ratings, file = "data/top_players_ratings.csv", sep = ";")
+} else {
+  top_players_ratings <- fread(file = "data/top_players_ratings.csv", sep = ";") %>%
+     mutate(date = as.Date(date)) %>%
+     mutate(name = as.character(name))
+}
+```
+
+```{r plot elo history of current most rated players}
+library(plotly)
+plot_ly(top_players_ratings, x = ~date, y = ~rating, color = ~name, type = "scatter", mode = "lines")
+```
