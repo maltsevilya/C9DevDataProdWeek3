@@ -10,8 +10,6 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 Sys.setlocale("LC_TIME", "C")
 ```
 
-## Introduction
-
 The project shows how FIDE rating of current top-5 chess players has been changing for several last years.
 
 The data is loaded from official [FIDE ratings page](http://ratings.fide.com/download.phtml). The graphics is made using *plotly* library.
