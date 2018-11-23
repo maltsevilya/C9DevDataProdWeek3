@@ -1,7 +1,7 @@
 ---
 title: "FIDE Rating of top-5 current chess players"
 author: "Ilya Maltsev"
-date: 'Nov 18, 2018'
+date: 'Nov 23, 2018'
 output: html_document
 ---
 
